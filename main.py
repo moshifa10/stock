@@ -1,3 +1,6 @@
+import requests
+import dotenv
+
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
