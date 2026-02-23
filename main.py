@@ -1,5 +1,3 @@
-import os
-
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
