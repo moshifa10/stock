@@ -1,35 +1,50 @@
 import os
 import requests
+import datetime as dt
+from twilio.rest import Client
+from dotenv import load_dotenv
 
-
+load_dotenv()
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
 
-apikey = os.environ.get("API_KEY")
+def call_api_stock(apikey)-> dict:
+    ENDPOINT_STOCK = "https://www.alphavantage.co/query"
+    params = {
+        "function" : "TIME_SERIES_DAILY",
+        "symbol" : STOCK,
+        "apikey": apikey
+    }
+    response = requests.get(url=ENDPOINT_STOCK, params=params)
+    response.raise_for_status()
+    return response.json() if response.status_code == 200 else None
 
-# TIME_SERIES_DAILY_ADJUSTED
-ENDPOINT = "https://www.alphavantage.co/query"
+def news_api(apikey)-> dict:
+    endpoint = "https://newsapi.org/v2/everything"
+    now = str(dt.date.today()).split("-")
+    now[-1] = int(now[-1]) -3
 
-params = {
-    "function" : "TIME_SERIES_DAILY",
-    "symbol" : STOCK,
-    "apikey": apikey
-}
+    now = list(map(int, now))
 
-response = requests.get(url=ENDPOINT, params=params)
-response.raise_for_status()
-# print(response.status_code)
-# print(response.text)
-data = None
-if response.status_code == 200:
-    data = response.json()
-# print(data)
+    t=  dt.date(year=now[0], month=now[1], day=now[-1])
+    d = dt.date(year=now[0], month=now[1], day=now[-1]- 3)
+    
+    params = {
+        "apiKey": apikey,
+        "q": "\"Tesla Inc\"" ,
+        "language": "en",
+        "from": d,
+        "to": t,
+        "sortBy": "relevancy",
+        "searchIn": "title,description,content"
+    }
 
+    response = requests.get(url=endpoint, params=params)
+    response.raise_for_status()
+    # print(response.text)
 
-1000-900/900 * 100
-# start = None
-# end
+    return response.json() if response.status_code == 200 else None
 
 ## STEP 1: Use https://www.alphavantage.co
 # When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
@@ -51,17 +66,37 @@ def get_stock_percent(data: dict) -> float:
         return float(f"-{formula}")
     return formula
 
+
 def main():
-    get_percent = get_stock_percent(data=data)
+    down_up = ["🔺", "🔻"]
+    # apikey_stock = os.environ.get("API_KEY")
+    apikey_stock = os.getenv(key="TESLA")
+    apikey_news = os.getenv(key="NEWS")
+    stock = call_api_stock(apikey=apikey_stock)
+    print(stock)
+    news = news_api(apikey=apikey_news)
+    # if stock == None:
+    #     print("Check the url you provided")
+    #     return
+    # get_percent = get_stock_percent(data=stock)
+    print(news)
+    # if get_percent < -5 or get_percent > 5:
+    #     # do something get the news
+    #     print("Got something")
 
-    if get_percent < -5 or get_percent > 5:
-        # do something get the news
-        print("Got something")
+    # else:
+    #     print("Nothing to be told")
 
-    else:
-        print("Nothing to be told")
-
-
+    account_sid = os.getenv("SID")
+    auth_token = os.getenv("API")
+    client = Client(account_sid, auth_token)
+    message = client.messages.create(
+        from_="+12566854735",
+        body="Hello moshifa",
+        to='+27607047759',
+        
+    )
+    # print(message.sid)
 ## STEP 2: Use https://newsapi.org
 # Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME. 
 
