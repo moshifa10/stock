@@ -1,9 +1,30 @@
-imp
+import os
+import requests
+
+
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
 
 apikey = os.environ.get("API_KEY")
+
+# TIME_SERIES_DAILY_ADJUSTED
+ENDPOINT = "https://www.alphavantage.co/query"
+
+params = {
+    "function" : "TIME_SERIES_DAILY",
+    "symbol" : STOCK,
+    "apikey": apikey
+}
+
+response = requests.get(url=ENDPOINT, params=params)
+response.raise_for_status()
+print(response.status_code)
+print(response.text)
+data = None
+if response.status_code == 200:
+    data = response.json()
+# print(data)
 
 ## STEP 1: Use https://www.alphavantage.co
 # When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
