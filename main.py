@@ -99,7 +99,7 @@ def main():
     percent = down_up[-1] if get_percent < 0 else down_up[0]
     clean =  get_news(data=news)
 
-    if get_percent < -5 or get_percent+10 > 5:
+    if get_percent < -5 or get_percent > 5:
         print("we are here")
 
         msg = EmailMessage()
