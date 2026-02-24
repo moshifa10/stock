@@ -3,10 +3,31 @@ import requests
 import datetime as dt
 from twilio.rest import Client
 from dotenv import load_dotenv
+import smtplib
+import pprint
+from email.message import EmailMessage
 
 load_dotenv()
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
+
+def get_news(data: dict) -> dict:
+
+    news = {}
+
+    for i in data["articles"][:3]:
+        if "brief" not in news.keys():
+            news["brief"] = f"{i["title"]}. "
+
+        else:
+            news["brief"] += f"{i["title"]}. "
+
+        if "headline" not in news.keys():
+            news["headline"] = f"{i["description"]}. "
+        else:
+            news["headline"] += f"{i["description"]}. "
+    return news
+
 
 
 def call_api_stock(apikey)-> dict:
@@ -32,7 +53,7 @@ def news_api(apikey)-> dict:
     
     params = {
         "apiKey": apikey,
-        "q": "\"Tesla Inc\"" ,
+        "q": "\"Tesla Inc\"" "+Tesla Inc",
         "language": "en",
         "from": d,
         "to": t,
@@ -42,12 +63,9 @@ def news_api(apikey)-> dict:
 
     response = requests.get(url=endpoint, params=params)
     response.raise_for_status()
-    # print(response.text)
 
     return response.json() if response.status_code == 200 else None
 
-## STEP 1: Use https://www.alphavantage.co
-# When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
 def get_stock_percent(data: dict) -> float:
     prices = []
     for c,i in enumerate(data["Time Series (Daily)"]):
@@ -55,11 +73,8 @@ def get_stock_percent(data: dict) -> float:
             break
         prices.append(data["Time Series (Daily)"][i]["4. close"])
 
-    # print(prices)
     yesterday, day_before_yesterday = map(float,prices)
-
     total = day_before_yesterday - yesterday
-
     formula = round((abs(total)/day_before_yesterday) * 100, 2)
 
     if str(total).startswith("-"):
@@ -72,48 +87,40 @@ def main():
     # apikey_stock = os.environ.get("API_KEY")
     apikey_stock = os.getenv(key="TESLA")
     apikey_news = os.getenv(key="NEWS")
+    password = os.getenv(key="PASS")
+    mail = os.getenv(key="USER")
     stock = call_api_stock(apikey=apikey_stock)
-    print(stock)
+    # print(stock)
     news = news_api(apikey=apikey_news)
-    # if stock == None:
-    #     print("Check the url you provided")
-    #     return
-    # get_percent = get_stock_percent(data=stock)
-    print(news)
-    # if get_percent < -5 or get_percent > 5:
-    #     # do something get the news
-    #     print("Got something")
+    if stock == None:
+        print("Check the url you provided")
+        return
+    get_percent = get_stock_percent(data=stock)
+    percent = down_up[-1] if get_percent < 0 else down_up[0]
+    clean =  get_news(data=news)
 
-    # else:
-    #     print("Nothing to be told")
+    if get_percent < -5 or get_percent+10 > 5:
+        print("we are here")
 
-    account_sid = os.getenv("SID")
-    auth_token = os.getenv("API")
-    client = Client(account_sid, auth_token)
-    message = client.messages.create(
-        from_="+12566854735",
-        body="Hello moshifa",
-        to='+27607047759',
-        
-    )
-    # print(message.sid)
-## STEP 2: Use https://newsapi.org
-# Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME. 
+        msg = EmailMessage()
+        msg["subject"] = f"Tesla Inc: {percent}{get_percent}%"
+        msg["From"] = mail
+        msg["To"] = mail
+        msg.set_content(
+            f"""
+Brief: {clean['brief']}\n
+Headline: {clean['headline']}"""
+        )
 
-## STEP 3: Use https://www.twilio.com
-# Send a seperate message with the percentage change and each article's title and description to your phone number. 
+        with smtplib.SMTP(host="smtp.gmail.com", port=587) as connection:
+            connection.starttls(),
+            connection.login(user=mail, password=password)
+            connection.send_message(msg)
 
+        print("Message sent successfuly")
 
-#Optional: Format the SMS message like this: 
-"""
-TSLA: 🔺2%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-or
-"TSLA: 🔻5%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-"""
+    else:
+        print("Nothing to be told")
 
 if __name__ == '__main__':
     main()
